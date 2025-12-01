@@ -18,7 +18,7 @@ type LineStyle = "solid" | "dashed" | "dotted" | "dotdash" | "wavy";
 
 interface Line {
   id: number;
-  // normalized coords (0–1) relative to canvas width/height
+  page: number;
   x1: number;
   y1: number;
   x2: number;
@@ -36,7 +36,7 @@ type TextFont = "system" | "serif" | "mono";
 
 interface TextBox {
   id: number;
-  // normalized top-left + size (0–1, relative to canvas)
+  page: number;
   x: number;
   y: number;
   width: number;
@@ -57,7 +57,7 @@ type OutlineStyle = "solid" | "dashed" | "cloud" | "zigzag";
 interface AreaShape {
   id: number;
   type: AreaShapeType;
-  // normalized points (0–1)
+  page: number;
   points: { x: number; y: number }[];
   outlineStyle: OutlineStyle;
   thickness: number;
@@ -306,6 +306,10 @@ const App: React.FC = () => {
     }
   }, []);
 
+  
+
+  
+
   // Keyboard handler for Delete / Backspace (lines + areas)
   const deleteSelected = () => {
     if (selectedLineId !== null) {
@@ -468,6 +472,8 @@ const App: React.FC = () => {
   async function goToPage(newPage: number) {
     if (!pdfDoc || !totalPages) return;
     if (newPage < 1 || newPage > totalPages) return;
+
+    clearSelection();
 
     setPageNum(newPage);
     await renderPage(pdfDoc, newPage, scale);
@@ -774,6 +780,7 @@ const App: React.FC = () => {
 
       const newBox: TextBox = {
         id,
+        page: pageNum,
         x: nx,
         y: ny,
         width: widthNorm,
@@ -803,6 +810,7 @@ const App: React.FC = () => {
 
       const newLine: Line = {
         id,
+        page: pageNum,
         x1: nx,
         y1: ny,
         x2: nx,
@@ -836,6 +844,7 @@ const App: React.FC = () => {
 
       const newArea: AreaShape = {
         id,
+        page: pageNum,
         type: areaShapeType,
         points: initialPoints,
         outlineStyle: areaOutlineStyle,
@@ -1220,6 +1229,11 @@ const App: React.FC = () => {
   const isLine = tool === "line";
   const isArea = tool === "area";
   const isText = tool === "text";
+
+  const linesForPage = lines.filter((l) => l.page === pageNum);
+  const areasForPage = areas.filter((a) => a.page === pageNum);
+  const textBoxesForPage = textBoxes.filter((b) => b.page === pageNum);
+
 
   return (
     <div
@@ -1820,7 +1834,7 @@ const App: React.FC = () => {
                   }}
                 >
                   {/* AREA SHAPES */}
-                  {areas.map((area) => {
+                  {areasForPage.map((area) => {
                     const dash = getOutlineDashArray(
                       area.outlineStyle,
                       area.thickness
@@ -2054,7 +2068,7 @@ const App: React.FC = () => {
                   })}
 
                   {/* LINES + handles */}
-                  {lines.map((line) => {
+                  {linesForPage.map((line) => {
                     const x1 = line.x1 * canvasSize.width;
                     const y1 = line.y1 * canvasSize.height;
                     const x2 = line.x2 * canvasSize.width;
@@ -2226,7 +2240,7 @@ const App: React.FC = () => {
                     zIndex: 2,
                   }}
                 >
-                  {textBoxes.map((box) => {
+                  {textBoxesForPage.map((box) => {
                     const isSelected = selectedTextId === box.id;
                     const top = box.y * canvasSize.height;
                     const left = box.x * canvasSize.width;
